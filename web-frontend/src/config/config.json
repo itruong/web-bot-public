@@ -1,0 +1,7 @@
+{
+    "localhost": {
+        "config_id": "localhost",
+        "node_port": 3050,
+        "SERVER_BASE_URL": "http://localhost:6001"
+    }
+}

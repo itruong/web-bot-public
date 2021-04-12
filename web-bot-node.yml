@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  selenium-node:
+    build: ./selenium-node
+    volumes:
+      - /dev/shm:/dev/shm
+      - ./selenium-node/src:/usr/src/app/src
+    environment:
+      # - SE_EVENT_BUS_HOST=selenium-hub
+      # - SE_EVENT_BUS_PUBLISH_PORT=4442
+      # - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      # - HUB_PORT_4444_TCP_ADDR=selenium-hub
+      # - HUB_PORT_4444_TCP_PORT=4444
+      - FLASK_APP=src:create_app()
+      - FLASK_ENV=development
+      - FLASK_RUN_PORT=6000
+      - APP_ENV=localhost
+      - WEB_BASE_URL=http://localhost:6001
+    ports:
+      - "6900:5900"
+      - "6002:6000"

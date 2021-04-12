@@ -1,0 +1,235 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: selenium-node
+  labels:
+    app: selenium-node
+spec:
+  # type: NodePort
+  ports:
+  - port: 5900
+    name: vnc
+  - port: 6000
+    name: api
+  selector:
+    app: selenium-node
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: selenium-node
+spec:
+  selector:
+    matchLabels:
+      app: selenium-node
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: selenium-node
+    spec:
+      containers:
+      - name: selenium-node
+        image: bot-selenium-node
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        ports:
+        - containerPort: 5900
+        - containerPort: 6000
+        env:
+          - name: FLASK_APP
+            value: src:create_app()
+          - name: FLASK_ENV
+            value: development
+          - name: FLASK_RUN_PORT
+            value: "6000"
+          - name: APP_ENV
+            value: localhost
+          - name: WEB_BASE_URL
+            value: http://proxy
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 6000
+          initialDelaySeconds: 3
+          periodSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy
+  labels:
+    app: proxy
+spec:
+  ports:
+  - port: 80
+  selector:
+    app: proxy
+---
+apiVersion: apps/v1 #  for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: proxy
+spec:
+  selector:
+    matchLabels:
+      app: proxy
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: proxy
+    spec:
+      containers:
+      - name: proxy
+        image: bot-proxy
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        ports:
+        - containerPort: 80
+        imagePullPolicy: IfNotPresent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-backend
+  labels:
+    app: web-backend
+spec:
+  ports:
+    - port: 6001
+  selector:
+    app: web-backend
+---
+apiVersion: apps/v1 #  for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: web-backend
+spec:
+  selector:
+    matchLabels:
+      app: web-backend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: web-backend
+    spec:
+      containers:
+      - name: web-backend
+        image: bot-web-backend
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+          - name: APP_ENV
+            value: localhost
+          - name: MONGO_CONNECTION
+            value: MONGO_CONNECTION # need to add secrets config
+          - name: MONGO_DATABASE_NAME
+            value: web_bot_development
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6001
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 6001
+          initialDelaySeconds: 3
+          periodSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guacd
+  labels:
+    app: guacd
+spec:
+  ports:
+    - port: 4822
+  selector:
+    app: guacd
+---
+apiVersion: apps/v1 #  for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: guacd
+spec:
+  selector:
+    matchLabels:
+      app: guacd
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: guacd
+    spec:
+      containers:
+      - name: gaucd
+        image: guacamole/guacd
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        ports:
+          - containerPort: 4822
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guacamole-backend
+  labels:
+    app: guacamole-backend
+spec:
+  ports:
+    - port: 8080
+  selector:
+    app: guacamole-backend
+---
+apiVersion: apps/v1 #  for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: guacamole-backend
+spec:
+  selector:
+    matchLabels:
+      app: guacamole-backend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: guacamole-backend
+    spec:
+      containers:
+      - name: guacamole-backend
+        image: bot-guacamole-backend
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+          - name: GUACD_HOSTNAME
+            value: guacd
+          - name: POSTGRES_DATABASE
+            value: guacamole_db
+          - name: POSTGRES_HOSTNAME
+            value: postgres
+          - name: POSTGRES_USER
+            value: test_user
+          - name: POSTGRES_PASSWORD
+            value: test_password
+        ports:
+          - containerPort: 8080
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /guacamole/health
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 3

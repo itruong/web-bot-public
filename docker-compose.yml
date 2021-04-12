@@ -1,0 +1,50 @@
+version: "3"
+
+services:
+  selenium-node:
+    build: ./selenium-node
+    image: bot-selenium-node
+    volumes:
+      - /dev/shm:/dev/shm
+      - ./selenium-node/src:/usr/src/app/src
+    environment:
+      - FLASK_APP=src:create_app()
+      - FLASK_ENV=development
+      - FLASK_RUN_PORT=6000
+      - APP_ENV=localhost
+      - WEB_BASE_URL=http://proxy
+    ports:
+      - "6900:5900"
+      - "6002:6000"
+  proxy:
+    build: ./proxy
+    image: bot-proxy
+    ports:
+      - "6001:80"
+  web-backend:
+    build: ./web-backend
+    image: bot-web-backend
+    volumes:
+      - ./web-backend/src:/usr/src/app/src
+    container_name: web-backend
+    environment:
+      - APP_ENV=localhost
+      - MONGO_CONNECTION=${MONGO_CONNECTION}
+      - MONGO_DATABASE_NAME=web_bot_development
+  guacd:
+    # container_name: guacd
+    image: guacamole/guacd
+    # restart: always
+  guacamole-backend:
+    build:
+      context: ./guacamole-backend
+      dockerfile: Dockerfile
+    image: bot-guacamole-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - GUACD_HOSTNAME=guacd
+      - POSTGRES_DATABASE=guacamole_db
+      - POSTGRES_HOSTNAME=postgres
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
